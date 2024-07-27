@@ -20,9 +20,10 @@ class EncryptEC2:
         self._max_attempts = 60
 
         if self.pre_checks():
-            self._describe_ec2 = self._ec2_client.describe_instances(InstanceIds=[instance_id])
-            for reservation in self._describe_ec2['Reservations']:
-                self._instance_details = reservation['Instances'][0]
+            # self._describe_ec2 = self._ec2_client.describe_instances(InstanceIds=[instance_id])
+            # for reservation in self._describe_ec2['Reservations']:
+            #     self._instance_details = reservation['Instances'][0]
+            pass
         else:
             # Exits the whole execution if pre-checks fails
             exit()
@@ -43,7 +44,8 @@ class EncryptEC2:
         return volume_ids
 
     def pre_checks(self) -> bool:
-        """ Checks if the EC2 exists or supports encrypted EBS volumes. Need to add check if all EBS are encrypted"""
+        """ Checks if the EC2 exists or supports encrypted EBS volumes."""
+        print("-- Performing pre checks")
         try:
             # Checks if all volumes are already encrypted.
             if self.get_ebs_list():
@@ -60,7 +62,7 @@ class EncryptEC2:
                 print(f"Instance type {instance_type} is not supported for encryption")
                 return False
             else:
-                print("Pre checks passed")
+                print("-- Pre checks passed")
                 return True
 
         except ClientError as err:
@@ -69,11 +71,12 @@ class EncryptEC2:
 
     def get_az(self) -> str:
         """ Returns availability zone of the instance """
-        return self._instance_details['Placement']['AvailabilityZone']
+        # return self._instance_details['Placement']['AvailabilityZone']
+        return self._ec2_details['Reservations'][0]['Instances'][0]['Placement']['AvailabilityZone']
 
     def stop_instance(self) -> None:
         """ Stops EC2 Instance and wait for it to be in stopped state"""
-        print(f"Stopping {self.instance_id}")
+        print(f"-- Stopping {self.instance_id}")
         self._ec2_client.stop_instances(
             InstanceIds=[
                 self.instance_id,
@@ -111,7 +114,7 @@ class EncryptEC2:
                     }
                 ]
             )
-            print(f"Detaching {volume_id} : {item['DeviceName']}")
+            print(f"-- Detaching {volume_id} : {item['DeviceName']}")
             self._ec2_client.detach_volume(
                 InstanceId=self.instance_id,
                 VolumeId=volume_id
@@ -157,7 +160,7 @@ class EncryptEC2:
                 }
             )
             created_snapshots.append(response['SnapshotId'])
-            print(f"{response['SnapshotId']} created")
+            print(f"-- {response['SnapshotId']} created")
         return created_snapshots
 
     def create_volume(self, snapshot_ids: list, availability_zone: str) -> list:
@@ -196,7 +199,7 @@ class EncryptEC2:
                 }
             )
             created_volumes.append(response['VolumeId'])
-        print(f"{created_volumes} created")
+        print(f"-- Volumes: {created_volumes} created")
         return created_volumes
 
     def attach_volume(self, volume_ids: list) -> bool:
@@ -211,12 +214,12 @@ class EncryptEC2:
                 InstanceId=self.instance_id,
                 VolumeId=volume
             )
-        print(f"{volume_ids} attached")
+        print(f"-- {volume_ids} attached")
         return True
 
     def start_instance(self):
         self._ec2_client.start_instances(InstanceIds=[self.instance_id])
-        print(f"{self.instance_id} started")
+        print(f"-- Starting {self.instance_id}")
         self._ec2_status_check_waiter.wait(
             InstanceIds=[
                 self.instance_id,
@@ -226,14 +229,14 @@ class EncryptEC2:
                 'MaxAttempts': self._max_attempts
             }
         )
-        print(f"{self.instance_id} has passed 2/2 status checks")
+        print(f"-- {self.instance_id} has passed 2/2 status checks")
 
     def delete_snapshots(self, snapshot_list: list):
         for item in snapshot_list:
             self._ec2_client.delete_snapshot(
                 SnapshotId=item
             )
-            print(item, "has been deleted")
+            print(f"-- Snapshot : {item} has been deleted")
 
     def start_encryption(self):
         availability_zone = self.get_az()
