@@ -11,7 +11,7 @@ class RDSStoppedWaiter:
         "version": 2,
         "waiters": {
             "RDSStopped": {
-                "delay": 15,
+                "delay": 30,
                 "operation": "DescribeDBInstances",
                 "maxAttempts": 123,
                 "acceptors": [{
@@ -200,7 +200,7 @@ class EncryptRDS:
         self.copy_snapshot()
         self.create_encrypted_db()
         self.swap_db_name()
-        self.stop_rds()
+        # self.stop_rds()
 
 
 if __name__ == "__main__":

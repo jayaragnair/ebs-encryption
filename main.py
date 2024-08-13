@@ -2,21 +2,55 @@ import argparse
 import openpyxl
 import os
 from ec2 import EncryptEC2
+from rds import EncryptRDS
 
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description='Encrypt EC2 instance')
-    sub_parser = parser.add_subparsers(dest='sub_command')
+    resource_parser = parser.add_subparsers(dest='resource_parser')
 
-    bulk = sub_parser.add_parser('bulk', help="For bulk execution Excel file path with instance details")
-    single = sub_parser.add_parser('single', help="For single instance ")
+    ec2 = resource_parser.add_parser('ec2', help="For encrypting EC2 instances with EBS volumes")
+    ebs = resource_parser.add_parser('ebs', help="For encrypting unattached EBS volumes")
+    rds = resource_parser.add_parser('rds', help="For encrypting RDS databases")
+    efs = resource_parser.add_parser('efs', help="For encrypting EFS filesystems")
 
-    bulk.add_argument('-f', '--file', metavar='input-file.xlsx', nargs='?', required=True)
-    single.add_argument('-i', '--instance', help="Single instance id", required=True)
-    single.add_argument('-r', '--region', help="AWS region", required=True)
-    single.add_argument('-p', '--profile', help="AWS profile", default='default')
-    single.add_argument('-k', '--key', help="KMS key id [optional]. If not provided, AWS managed key will be used")
-    return parser.parse_args()
+    ec2_parser = ec2.add_subparsers(dest='type_parser')
+    ec2_bulk = ec2_parser.add_parser('bulk', help="For bulk execution Excel file path with instance details")
+    ec2_single = ec2_parser.add_parser('single', help="For single instance ")
+    ec2_bulk.add_argument('-f', '--file', metavar='input-file.xlsx', nargs='?', required=True)
+    ec2_single.add_argument('-i', '--instance', help="Single instance id", required=True)
+    ec2_single.add_argument('-r', '--region', help="AWS region", required=True)
+    ec2_single.add_argument('-p', '--profile', help="AWS profile", default='default')
+    ec2_single.add_argument('-k', '--key', help="KMS key id [optional]. If not provided, AWS managed key will be used")
+
+    ebs_parser = ebs.add_subparsers(dest='type_parser')
+    ebs_bulk = ebs_parser.add_parser('bulk', help="For bulk execution Excel file path with EBS details")
+    ebs_single = ebs_parser.add_parser('single', help="For single EBS volume ")
+    ebs_bulk.add_argument('-f', '--file', metavar='input-file.xlsx', nargs='?', required=True)
+    ebs_single.add_argument('-v', '--volume', help="Single EBS volume id", required=True)
+    ebs_single.add_argument('-r', '--region', help="AWS region", required=True)
+    ebs_single.add_argument('-p', '--profile', help="AWS profile", default='default')
+    ebs_single.add_argument('-k', '--key', help="KMS key id [optional]. If not provided, AWS managed key will be used")
+
+    rds_parser = rds.add_subparsers(dest='type_parser')
+    rds_bulk = rds_parser.add_parser('bulk', help="For bulk execution Excel file path with rds details")
+    rds_single = rds_parser.add_parser('single', help="For single rds instance ")
+    rds_bulk.add_argument('-f', '--file', metavar='input-file.xlsx', nargs='?', required=True)
+    rds_single.add_argument('-v', '--volume', help="Single rds  ARN", required=True)
+    rds_single.add_argument('-r', '--region', help="AWS region", required=True)
+    rds_single.add_argument('-p', '--profile', help="AWS profile", default='default')
+    rds_single.add_argument('-k', '--key', help="KMS key id [optional]. If not provided, AWS managed key will be used")
+
+    efs_parser = efs.add_subparsers(dest='type_parser')
+    efs_bulk = efs_parser.add_parser('bulk', help="For bulk execution Excel file path with EFS details")
+    efs_single = efs_parser.add_parser('single', help="For single EFS filesystem ")
+    efs_bulk.add_argument('-f', '--file', metavar='input-file.xlsx', nargs='?', required=True)
+    efs_single.add_argument('-v', '--volume', help="Single EFS ARN", required=True)
+    efs_single.add_argument('-r', '--region', help="AWS region", required=True)
+    efs_single.add_argument('-p', '--profile', help="AWS profile", default='default')
+    efs_single.add_argument('-k', '--key', help="KMS key id [optional]. If not provided, AWS managed key will be used")
+
+    return parser.parse_args(['ec2', 'single', '-i', 'abcd', '-r', 'us-east-1'])
 
 
 def file_exists(file):
@@ -26,14 +60,14 @@ def file_exists(file):
         raise Exception("Oops, that path doesn't exist")
 
 
-def bulk_execution(file):
-    wb = openpyxl.load_workbook(file)
+def bulk_execution(args):
+    wb = openpyxl.load_workbook(args.file)
     ws = wb.active
     heading = []
     first_row = ws.iter_rows(max_row=1, values_only=True)
     for i in first_row:
         heading.extend(list(i))
-    instance_row = heading.index('InstanceID')
+    resource_row = heading.index('InstanceID')
     region_row = heading.index('Region')
     account_row = heading.index('Account')
     try:
@@ -42,16 +76,45 @@ def bulk_execution(file):
         key_row = None
     data = ws.iter_rows(min_row=2, values_only=True)
     for row in data:
-        instance_id = row[instance_row]
+        resource_id = row[resource_row]
         region = row[region_row]
         account = row[account_row]
-        print(instance_id, region, account)
-        if key_row:
-            key = row[key_row]
-            EncryptEC2(instance_id=instance_id, region=region, profile=account, key=key).start_encryption()
+        print(resource_id, region, account)
+
+        if args.resource_parser == 'ec2':
+            if key_row:
+                key = row[key_row]
+                EncryptEC2(instance_id=resource_id, region=region, profile=account, key=key).start_encryption()
+            else:
+                print("Proceeding without custom key, AWS managed key will be used for encryption")
+                EncryptEC2(instance_id=resource_id, region=region, profile=account).start_encryption()
+
+        elif args.resource_parser == 'ebs':
+            if key_row:
+                key = row[key_row]
+                EncryptEC2(instance_id=resource_id, region=region, profile=account, key=key).start_encryption()
+            else:
+                print("Proceeding without custom key, AWS managed key will be used for encryption")
+                EncryptEC2(instance_id=resource_id, region=region, profile=account).start_encryption()
+
+        elif args.resource_parser == 'rds':
+            if key_row:
+                key = row[key_row]
+                EncryptRDS(rds_identifier=resource_id, region=region, profile=account, key=key).start_encryption()
+            else:
+                print("Proceeding without custom key, AWS managed key will be used for encryption")
+                EncryptRDS(rds_identifier=resource_id, region=region, profile=account).start_encryption()
+
+        elif args.resource_parser == 'efs':
+            if key_row:
+                key = row[key_row]
+                EncryptEC2(instance_id=resource_id, region=region, profile=account, key=key).start_encryption()
+            else:
+                print("Proceeding without custom key, AWS managed key will be used for encryption")
+                EncryptEC2(instance_id=resource_id, region=region, profile=account).start_encryption()
+
         else:
-            print("Proceeding without custom key, AWS managed key will be used for encryption")
-            EncryptEC2(instance_id=instance_id, region=region, profile=account).start_encryption()
+            pass
 
 
 def single_execution(args):
@@ -70,11 +133,11 @@ def single_execution(args):
 
 if __name__ == "__main__":
     arguments = parse_arguments()
-    if arguments.sub_command == 'bulk':
+
+    if arguments.type_parser == 'bulk':
         if file_exists(arguments.file):
-            bulk_execution(arguments.file)
+            bulk_execution(arguments)
         else:
             raise Exception("Oops, that path doesn't exist")
-    if arguments.sub_command == 'single':
+    if arguments.type_parser == 'single':
         single_execution(arguments)
-

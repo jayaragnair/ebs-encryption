@@ -3,13 +3,13 @@ from botocore.exceptions import ClientError
 
 
 class EncryptEC2:
-    def __init__(self, instance_id: str, region: str, profile: str = 'default', key: str = 'alias/aws/ebs'):
+    def __init__(self, instance_id: str, region: str = 'us-east-1', profile: str = 'default', key: str = 'alias/aws/ebs'):
         session = boto3.session.Session(profile_name=profile, region_name=region)
 
         self.instance_id = instance_id
         self.key = key
         self._ec2_client = session.client('ec2')
-        self._ec2_details = self._ec2_client.describe_instances(InstanceIds=[instance_id])
+        # self._ec2_details = self._ec2_client.describe_instances(InstanceIds=[instance_id])
         self._ec2_resource = session.resource('ec2')
         self._ec2_stop_waiter = self._ec2_client.get_waiter('instance_stopped')
         self._ebs_available_waiter = self._ec2_client.get_waiter('volume_available')
@@ -20,10 +20,8 @@ class EncryptEC2:
         self._max_attempts = 60
 
         if self.pre_checks():
-            # self._describe_ec2 = self._ec2_client.describe_instances(InstanceIds=[instance_id])
-            # for reservation in self._describe_ec2['Reservations']:
-            #     self._instance_details = reservation['Instances'][0]
-            pass
+            print("-- Pre checks passed")
+            self._ec2_details = self._ec2_client.describe_instances(InstanceIds=[instance_id])
         else:
             # Exits the whole execution if pre-checks fails
             exit()
@@ -31,7 +29,8 @@ class EncryptEC2:
     def get_ebs_list(self) -> list[dict]:
         """Returns list of unencrypted volume details"""
         volume_ids = []
-        for ebs in self._ec2_details['Reservations'][0]['Instances'][0]['BlockDeviceMappings']:
+        describe_ec2 = self._ec2_client.describe_instances(InstanceIds=[self.instance_id])
+        for ebs in describe_ec2['Reservations'][0]['Instances'][0]['BlockDeviceMappings']:
             volume_id = ebs['Ebs']['VolumeId']
             resp = self._ec2_client.describe_volumes(
                 VolumeIds=[volume_id]
@@ -62,12 +61,14 @@ class EncryptEC2:
                 print(f"Instance type {instance_type} is not supported for encryption")
                 return False
             else:
-                print("-- Pre checks passed")
                 return True
 
         except ClientError as err:
             if err.response['Error']['Code'] == 'InvalidInstanceID.Malformed':
-                raise Exception("Instance not found")
+                print(f"Instance : {self.instance_id} not found")
+                return False
+            else:
+                print(err)
 
     def get_az(self) -> str:
         """ Returns availability zone of the instance """
@@ -249,3 +250,7 @@ class EncryptEC2:
         self.start_instance()
         self.delete_snapshots(snapshot_list=snapshots)
         self.start_instance()
+
+
+if __name__ == "__main__":
+    EncryptEC2(instance_id='abcs').start_encryption()
