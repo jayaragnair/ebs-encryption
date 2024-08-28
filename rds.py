@@ -3,6 +3,7 @@ from botocore.exceptions import ClientError
 from botocore.waiter import WaiterModel, create_waiter_with_client
 from datetime import datetime
 import time
+from sys import exit
 
 
 class RDSStoppedWaiter:
@@ -204,7 +205,5 @@ class EncryptRDS:
 
 
 if __name__ == "__main__":
-    print(datetime.now())
     EncryptRDS(rds_identifier='database-1').start_encryption()
-    print(datetime.now())
 

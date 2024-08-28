@@ -3,10 +3,11 @@ import openpyxl
 import os
 from ec2 import EncryptEC2
 from rds import EncryptRDS
+from efs import EncryptEFS
 
 
 def parse_arguments():
-    parser = argparse.ArgumentParser(description='Encrypt EC2 instance')
+    parser = argparse.ArgumentParser(description='Encrypt AWS Resources')
     resource_parser = parser.add_subparsers(dest='resource_parser')
 
     ec2 = resource_parser.add_parser('ec2', help="For encrypting EC2 instances with EBS volumes")
@@ -50,8 +51,8 @@ def parse_arguments():
     efs_single.add_argument('-p', '--profile', help="AWS profile", default='default')
     efs_single.add_argument('-k', '--key', help="KMS key id [optional]. If not provided, AWS managed key will be used")
 
-    return parser.parse_args(['ec2', 'single', '-i', 'abcd', '-r', 'us-east-1'])
-
+    # return parser.parse_args(['ec2', '-h'])
+    return parser.parse_args()
 
 def file_exists(file):
     if os.path.exists(file):
@@ -67,9 +68,9 @@ def bulk_execution(args):
     first_row = ws.iter_rows(max_row=1, values_only=True)
     for i in first_row:
         heading.extend(list(i))
-    resource_row = heading.index('InstanceID')
-    region_row = heading.index('Region')
-    account_row = heading.index('Account')
+    resource_row = heading.index('resourceid')
+    region_row = heading.index('region')
+    profile_row = heading.index('profile')
     try:
         key_row = heading.index('Key')
     except ValueError:
@@ -78,57 +79,87 @@ def bulk_execution(args):
     for row in data:
         resource_id = row[resource_row]
         region = row[region_row]
-        account = row[account_row]
-        print(resource_id, region, account)
+        profile = row[profile_row]
+        print(resource_id, region, profile)
 
         if args.resource_parser == 'ec2':
             if key_row:
                 key = row[key_row]
-                EncryptEC2(instance_id=resource_id, region=region, profile=account, key=key).start_encryption()
+                EncryptEC2(instance_id=resource_id, region=region, profile=profile, key=key).start_encryption()
             else:
                 print("Proceeding without custom key, AWS managed key will be used for encryption")
-                EncryptEC2(instance_id=resource_id, region=region, profile=account).start_encryption()
+                EncryptEC2(instance_id=resource_id, region=region, profile=profile).start_encryption()
 
         elif args.resource_parser == 'ebs':
             if key_row:
                 key = row[key_row]
-                EncryptEC2(instance_id=resource_id, region=region, profile=account, key=key).start_encryption()
+                EncryptEC2(instance_id=resource_id, region=region, profile=profile, key=key).start_encryption()
             else:
                 print("Proceeding without custom key, AWS managed key will be used for encryption")
-                EncryptEC2(instance_id=resource_id, region=region, profile=account).start_encryption()
+                EncryptEC2(instance_id=resource_id, region=region, profile=profile).start_encryption()
 
         elif args.resource_parser == 'rds':
             if key_row:
                 key = row[key_row]
-                EncryptRDS(rds_identifier=resource_id, region=region, profile=account, key=key).start_encryption()
+                EncryptRDS(rds_identifier=resource_id, region=region, profile=profile, key=key).start_encryption()
             else:
                 print("Proceeding without custom key, AWS managed key will be used for encryption")
-                EncryptRDS(rds_identifier=resource_id, region=region, profile=account).start_encryption()
+                EncryptRDS(rds_identifier=resource_id, region=region, profile=profile).start_encryption()
 
         elif args.resource_parser == 'efs':
             if key_row:
                 key = row[key_row]
-                EncryptEC2(instance_id=resource_id, region=region, profile=account, key=key).start_encryption()
+                EncryptEFS(efs_id=resource_id, region=region, profile=profile, key=key).start_encryption()
             else:
                 print("Proceeding without custom key, AWS managed key will be used for encryption")
-                EncryptEC2(instance_id=resource_id, region=region, profile=account).start_encryption()
+                EncryptEFS(efs_id=resource_id, region=region, profile=profile).start_encryption()
 
         else:
             pass
 
 
 def single_execution(args):
-    instance_id = args.instance
+    resource_id = args.instance
     region = args.region
-    account = args.profile
+    profile = args.profile
     try:
         key = args.key
     except ValueError:
         key = None
-    if key:
-        EncryptEC2(instance_id=instance_id, region=region, profile=account, key=key).start_encryption()
+
+    if args.resource_parser == 'ec2':
+        if key:
+            EncryptEC2(instance_id=resource_id, region=region, profile=profile, key=key).start_encryption()
+        else:
+            print("Proceeding without custom key, AWS managed key will be used for encryption")
+            EncryptEC2(instance_id=resource_id, region=region, profile=profile).start_encryption()
+
+    elif args.resource_parser == 'ebs':
+        if key:
+            EncryptEC2(instance_id=resource_id, region=region, profile=profile, key=key).start_encryption()
+        else:
+            print("Proceeding without custom key, AWS managed key will be used for encryption")
+            EncryptEC2(instance_id=resource_id, region=region, profile=profile).start_encryption()
+
+    elif args.resource_parser == 'rds':
+        if key:
+            EncryptRDS(rds_identifier=resource_id, region=region, profile=profile, key=key).start_encryption()
+        else:
+            print("Proceeding without custom key, AWS managed key will be used for encryption")
+            EncryptRDS(rds_identifier=resource_id, region=region, profile=profile).start_encryption()
+
+    elif args.resource_parser == 'efs':
+        if key:
+            EncryptEFS(efs_id=resource_id, region=region, profile=profile, key=key).start_encryption()
+        else:
+            print("Proceeding without custom key, AWS managed key will be used for encryption")
+            EncryptEFS(efs_id=resource_id, region=region, profile=profile).start_encryption()
     else:
-        EncryptEC2(instance_id=instance_id, region=region, profile=account).start_encryption()
+        pass
+    # if key:
+    #     EncryptEC2(instance_id=instance_id, region=region, profile=profile, key=key).start_encryption()
+    # else:
+    #     EncryptEC2(instance_id=instance_id, region=region, profile=profile).start_encryption()
 
 
 if __name__ == "__main__":
@@ -138,6 +169,7 @@ if __name__ == "__main__":
         if file_exists(arguments.file):
             bulk_execution(arguments)
         else:
+
             raise Exception("Oops, that path doesn't exist")
     if arguments.type_parser == 'single':
         single_execution(arguments)

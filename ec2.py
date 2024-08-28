@@ -1,5 +1,6 @@
 import boto3
 from botocore.exceptions import ClientError
+from sys import exit
 
 
 class EncryptEC2:
