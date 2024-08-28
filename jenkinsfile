@@ -1,0 +1,23 @@
+pipeline {
+    agent any
+    stages {
+        stage('Build') {
+            steps {
+                bat(/"C:\Users\jayar\AppData\Local\Programs\Python\Python310\Scripts\pyinstaller.exe" -F Z:\WIMS\Dissertation\Encrypt\ebs-encryption\main.py -n encrypt -i Z:\WIMS\Dissertation\Encrypt\ebs-encryption\icon.ico/)
+            }
+        }
+
+        stage('UploadToS3') {
+            steps {
+                s3Upload consoleLogLevel: 'INFO', dontSetBuildResultOnFailure: false, dontWaitForConcurrentBuildCompletion: false, entries: [[bucket: 'download.awsencryption.xyz', excludedFile: '', flatten: false, gzipFiles: false, keepForever: false, managedArtifacts: false, noUploadOnFailure: false, selectedRegion: 'us-east-1', showDirectlyInBrowser: false, sourceFile: 'dist/encrypt.exe', storageClass: 'STANDARD', uploadFromSlave: false, useServerSideEncryption: false]], pluginFailureResultConstraint: 'FAILURE', profileName: 'default', userMetadata: []
+            }
+        }
+        stage('MoveItemsToEncrypt') {
+            steps {
+                bat 'del Z:\\WIMS\\Dissertation\\Encrypt\\*.exe'
+                bat 'copy dist\\*.exe Z:\\WIMS\\Dissertation\\Encrypt'
+                cleanWs()
+            }
+        }
+    }
+}
