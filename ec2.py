@@ -1,6 +1,6 @@
 import boto3
 from botocore.exceptions import ClientError
-from sys import exit
+# from sys import exit
 
 
 class EncryptEC2:
@@ -21,11 +21,12 @@ class EncryptEC2:
         self._max_attempts = 60
 
         if self.pre_checks():
+            self._pre_checks_passed = True
             print("-- Pre checks passed")
             self._ec2_details = self._ec2_client.describe_instances(InstanceIds=[instance_id])
         else:
             # Exits the whole execution if pre-checks fails
-            exit()
+            self._pre_checks_passed = False
 
     def get_ebs_list(self) -> list[dict]:
         """Returns list of unencrypted volume details"""
@@ -241,16 +242,17 @@ class EncryptEC2:
             print(f"-- Snapshot : {item} has been deleted")
 
     def start_encryption(self):
-        availability_zone = self.get_az()
-        self.stop_instance()
-        self.detach_volume()
-        volume_ids = [ebs['VolumeId'] for ebs in self.get_ebs_list()]
-        snapshots = self.create_snapshots(volume_ids=volume_ids)
-        encrypted_volumes = self.create_volume(snapshot_ids=snapshots, availability_zone=availability_zone)
-        self.attach_volume(volume_ids=encrypted_volumes)
-        self.start_instance()
-        self.delete_snapshots(snapshot_list=snapshots)
-        self.start_instance()
+        if self._pre_checks_passed:
+            availability_zone = self.get_az()
+            self.stop_instance()
+            self.detach_volume()
+            volume_ids = [ebs['VolumeId'] for ebs in self.get_ebs_list()]
+            snapshots = self.create_snapshots(volume_ids=volume_ids)
+            encrypted_volumes = self.create_volume(snapshot_ids=snapshots, availability_zone=availability_zone)
+            self.attach_volume(volume_ids=encrypted_volumes)
+            self.start_instance()
+            self.delete_snapshots(snapshot_list=snapshots)
+            self.start_instance()
 
 
 if __name__ == "__main__":

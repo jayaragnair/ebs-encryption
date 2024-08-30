@@ -1,7 +1,6 @@
 import boto3
 from botocore.exceptions import ClientError
 from botocore.waiter import WaiterModel, create_waiter_with_client
-from datetime import datetime
 import time
 from sys import exit
 
@@ -49,11 +48,10 @@ class EncryptRDS:
         self._max_attempts = 100
 
         if self.pre_checks():
-            pass
+            self._pre_checks_passed = True
         else:
             # Exits the whole execution if pre-checks fails
-            exit()
-            pass
+            self._pre_checks_passed = False
 
     def pre_checks(self) -> bool:
         """ Checks if the rds is already encrypted or supports encrypted volumes."""
@@ -197,11 +195,12 @@ class EncryptRDS:
         print("-- DB Names swapped")
 
     def start_encryption(self):
-        self.create_snapshot()
-        self.copy_snapshot()
-        self.create_encrypted_db()
-        self.swap_db_name()
-        # self.stop_rds()
+        if self._pre_checks_passed:
+            self.create_snapshot()
+            self.copy_snapshot()
+            self.create_encrypted_db()
+            self.swap_db_name()
+            # self.stop_rds()
 
 
 if __name__ == "__main__":

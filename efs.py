@@ -1,7 +1,7 @@
 import boto3
 from botocore.exceptions import ClientError
 import time
-from sys import exit
+# from sys import exit
 
 
 class EncryptEFS:
@@ -19,11 +19,11 @@ class EncryptEFS:
         self._max_attempts = 100
 
         if self.pre_checks():
+            self._pre_checks_passed = True
             self._efs_details = self._efs_client.describe_file_systems(FileSystemId=self.efs_identifier)['FileSystems'][0]
         else:
             # Exits the whole execution if pre-checks fails
-            exit()
-            pass
+            self._pre_checks_passed = False
 
     def pre_checks(self) -> bool:
         """ Checks if the efs is already encrypted"""
@@ -96,10 +96,11 @@ class EncryptEFS:
         )
 
     def start_encryption(self):
-        created_replica = self.replicate_efs()
-        self.failover_to_replica()
-        self.copy_tags_if_exists(created_replica)
-        print(f"-- Encryption completed. Mount the new encrypted efs : {created_replica}")
+        if self._pre_checks_passed:
+            created_replica = self.replicate_efs()
+            self.failover_to_replica()
+            self.copy_tags_if_exists(created_replica)
+            print(f"-- Encryption completed. Mount the new encrypted efs : {created_replica}")
 
 
 if __name__ == "__main__":
