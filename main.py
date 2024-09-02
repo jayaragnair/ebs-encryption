@@ -8,6 +8,7 @@ from ec2 import EncryptEC2
 from rds import EncryptRDS
 from efs import EncryptEFS
 import time
+from boto3.session import Session
 
 
 def bulk_execution(file, resource_type):
@@ -100,6 +101,32 @@ def single_execution(resource_type, resource_id, region, profile, key=None):
         pass
 
 
+def resource_id_text_parser(resource_type):
+    resource_text = 'Resource ID'
+    if resource_type == 'EC2':
+        resource_text = 'Instance ID'
+    elif resource_type == 'EBS':
+        resource_text = 'Volume ID'
+    elif resource_type == 'RDS':
+        resource_text = 'RDS Identifier'
+    elif resource_type == 'EFS':
+        resource_text = 'Filesystem ID'
+    return resource_text
+
+
+def aws_profile_completer():
+    profiles = Session().available_profiles
+    profiles_dict = {profile: None for profile in profiles}
+    return profiles_dict
+
+
+def aws_region_completer(resource_type: str):
+    service_name = resource_type.lower()
+    regions = Session().get_available_regions(service_name)
+    regions_dict = {region: None for region in regions}
+    return regions_dict
+
+
 def main():
     style = get_style({"questionmark": "fg:yellow", "answer": "#000000", "pointer": "orange bold", "question": "green bold"}, style_override=False)
     proceed = True
@@ -107,6 +134,7 @@ def main():
         resource_type = inquirer.rawlist(
             style=style,
             message="Select the resource type to encrypt:",
+            #  Choices below must be exact name of the AWS service for downstream dependencies
             choices=[
                 "EC2",
                 "EBS",
@@ -129,40 +157,26 @@ def main():
             ).execute()
 
             if count == 'Single':
+                resource_text = resource_id_text_parser(resource_type)
                 resource_id = inquirer.text(
-                    message="Enter the resource ID:",
+                    message=f"Enter the {resource_text}:",
                     validate=EmptyInputValidator("Input should not be empty")
                 ).execute()
                 region = inquirer.text(
                     message="Enter the AWS region code:",
-                    completer={
-                        "us-east-1": None,  # US East (N. Virginia)
-                        "us-east-2": None,  # US East (Ohio)
-                        "us-west-1": None,  # US West (N. California)
-                        "us-west-2": None,  # US West (Oregon)
-                        "af-south-1": None,  # Africa (Cape Town)
-                        "ap-east-1": None,  # Asia Pacific (Hong Kong)
-                        "ap-south-1": None,  # Asia Pacific (Mumbai)
-                        "ap-northeast-1": None,  # Asia Pacific (Tokyo)
-                        "ap-northeast-2": None,  # Asia Pacific (Seoul)
-                        "ap-northeast-3": None,  # Asia Pacific (Osaka)
-                        "ap-southeast-1": None,  # Asia Pacific (Singapore)
-                        "ap-southeast-2": None,  # Asia Pacific (Sydney)
-                        "ap-southeast-3": None,  # Asia Pacific (Jakarta)
-                        "ca-central-1": None,  # Canada (Central)
-                        "eu-central-1": None,  # Europe (Frankfurt)
-                        "eu-west-1": None,  # Europe (Ireland)
-                        "eu-west-2": None,  # Europe (London)
-                        "eu-west-3": None,  # Europe (Paris)
-                        "eu-north-1": None,  # Europe (Stockholm)
-                        "eu-south-1": None,  # Europe (Milan)
-                        "me-south-1": None,  # Middle East (Bahrain)
-                        "sa-east-1": None,  # South America (São Paulo)
-                    },
+                    completer=aws_region_completer(resource_type),
                     validate=EmptyInputValidator("Input should not be empty"),
                     multicolumn_complete=True,
                 ).execute()
-                profile = inquirer.text(message="Enter the AWS profile:", default='default').execute()
+
+                profile = inquirer.text(
+                    message="Enter the AWS profile (Leave blank for default):",
+                    filter=lambda result: 'default' if result == '' else result,  # makes the profile default if left blank
+                    completer=aws_profile_completer(),
+                    mandatory=False
+                    # qmark='?'  -- to change the qmark at beginning
+                ).execute()
+
                 key = inquirer.text(message="Enter the custom KMS key (Leave blank to use AWS managed key):").execute()
                 if key:
                     single_execution(resource_type=resource_type, resource_id=resource_id, region=region, profile=profile,
