@@ -1,10 +1,15 @@
 pipeline {
     agent any
     stages {
+        stage('DownloadArtifacts') {
+            steps {
+                bat 'aws s3 cp --recursive s3://aws-encrypt-packages/modules .'
+            }
+        }
         stage('Build') {
             steps {
                 git branch: 'test', url: 'https://github.com/jayaragnair/ebs-encryption.git'
-                bat(/"C:\Users\jayar\AppData\Local\Programs\Python\Python310\Scripts\pyinstaller.exe" -F main.py -n encrypt -i icon.ico/)
+                bat(/"C:\Users\jayar\AppData\Local\Programs\Python\Python310\Scripts\pyinstaller.exe" -F main.py -n encrypt -i icon.ico -p packages/)
             }
         }
 

@@ -1,6 +1,7 @@
 from InquirerPy import inquirer
 from InquirerPy.base.control import Choice
 from InquirerPy.validator import PathValidator, EmptyInputValidator
+from InquirerPy import get_style
 import openpyxl
 import os
 from ec2 import EncryptEC2
@@ -100,9 +101,11 @@ def single_execution(resource_type, resource_id, region, profile, key=None):
 
 
 def main():
+    style = get_style({"questionmark": "fg:yellow", "answer": "#000000", "pointer": "orange bold", "question": "green bold"}, style_override=False)
     proceed = True
     while proceed:
         resource_type = inquirer.rawlist(
+            style=style,
             message="Select the resource type to encrypt:",
             choices=[
                 "EC2",
@@ -172,13 +175,20 @@ def main():
                 file_path = inquirer.filepath(
                     message="Enter the excel file path:",
                     default=home_path,
-                    validate=lambda result: PathValidator(is_file=True, message="Input is not a file") and result[-5:] == '.xlsx',
+                    validate=lambda result: PathValidator(is_file=True, message="Input is not a file") and result[-5:] in ['.xlsx', 'xlsm', 'xltx', 'xltm'],
                     invalid_message="Input is not a file or with wrong extension. Please select an excel (.xlsx) file."
                 ).execute()
                 bulk_execution(file=file_path, resource_type=resource_type)
 
+            else:
+                proceed = False
+                continue
+
             proceed = inquirer.confirm(message="Do you want to proceed again?", default=True).execute()
             time.sleep(1)
+
+        else:
+            proceed = False
 
 
 if __name__ == "__main__":
