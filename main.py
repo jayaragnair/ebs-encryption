@@ -131,77 +131,83 @@ def main():
     style = get_style({"questionmark": "fg:yellow", "answer": "#000000", "pointer": "orange bold", "question": "green bold"}, style_override=False)
     proceed = True
     while proceed:
-        resource_type = inquirer.rawlist(
-            style=style,
-            message="Select the resource type to encrypt:",
-            #  Choices below must be exact name of the AWS service for downstream dependencies
-            choices=[
-                "EC2",
-                "EBS",
-                "RDS",
-                "EFS",
-                Choice(value=None, name="Exit"),
-            ],
-            default=1,
-        ).execute()
-
-        if resource_type:
-            count = inquirer.rawlist(
+        try:
+            resource_type = inquirer.rawlist(
+                style=style,
                 message="Select the resource type to encrypt:",
+                #  Choices below must be exact name of the AWS service for downstream dependencies
                 choices=[
-                    "Single",
-                    "Bulk",
+                    "EC2",
+                    "EBS",
+                    "RDS",
+                    "EFS",
                     Choice(value=None, name="Exit"),
                 ],
-                default=1
+                default=1,
             ).execute()
 
-            if count == 'Single':
-                resource_text = resource_id_text_parser(resource_type)
-                resource_id = inquirer.text(
-                    message=f"Enter the {resource_text}:",
-                    validate=EmptyInputValidator("Input should not be empty")
-                ).execute()
-                region = inquirer.text(
-                    message="Enter the AWS region code:",
-                    completer=aws_region_completer(resource_type),
-                    validate=EmptyInputValidator("Input should not be empty"),
-                    multicolumn_complete=True,
+            if resource_type:
+                count = inquirer.rawlist(
+                    message="Select the resource type to encrypt:",
+                    choices=[
+                        "Single",
+                        "Bulk",
+                        Choice(value=None, name="Exit"),
+                    ],
+                    default=1
                 ).execute()
 
-                profile = inquirer.text(
-                    message="Enter the AWS profile (Leave blank for default):",
-                    filter=lambda result: 'default' if result == '' else result,  # makes the profile default if left blank
-                    completer=aws_profile_completer(),
-                    mandatory=False
-                    # qmark='?'  -- to change the qmark at beginning
-                ).execute()
+                if count == 'Single':
+                    resource_text = resource_id_text_parser(resource_type)
+                    resource_id = inquirer.text(
+                        message=f"Enter the {resource_text}:",
+                        validate=EmptyInputValidator("Input should not be empty")
+                    ).execute()
+                    region = inquirer.text(
+                        message="Enter the AWS region code:",
+                        completer=aws_region_completer(resource_type),
+                        validate=EmptyInputValidator("Input should not be empty"),
+                        multicolumn_complete=True,
+                    ).execute()
 
-                key = inquirer.text(message="Enter the custom KMS key (Leave blank to use AWS managed key):").execute()
-                if key:
-                    single_execution(resource_type=resource_type, resource_id=resource_id, region=region, profile=profile,
-                                     key=key)
+                    profile = inquirer.text(
+                        message="Enter the AWS profile (Leave blank for default):",
+                        filter=lambda result: 'default' if result == '' else result,  # makes the profile default if left blank
+                        completer=aws_profile_completer(),
+                        mandatory=False
+                        # qmark='?'  -- to change the qmark at beginning
+                    ).execute()
+
+                    key = inquirer.text(message="Enter the custom KMS key (Leave blank to use AWS managed key):").execute()
+                    if key:
+                        single_execution(resource_type=resource_type, resource_id=resource_id, region=region, profile=profile,
+                                         key=key)
+                    else:
+                        single_execution(resource_type=resource_type, resource_id=resource_id, region=region, profile=profile)
+
+                elif count == 'Bulk':
+                    home_path = "~/" if os.name == "posix" else "C:\\"
+                    file_path = inquirer.filepath(
+                        message="Enter the excel file path:",
+                        default=home_path,
+                        validate=lambda result: PathValidator(is_file=True, message="Input is not a file") and result[-5:] in ['.xlsx', 'xlsm', 'xltx', 'xltm'],
+                        invalid_message="Input is not a file or with wrong extension. Please select an excel (.xlsx) file."
+                    ).execute()
+                    bulk_execution(file=file_path, resource_type=resource_type)
+
                 else:
-                    single_execution(resource_type=resource_type, resource_id=resource_id, region=region, profile=profile)
+                    proceed = False
+                    continue
 
-            elif count == 'Bulk':
-                home_path = "~/" if os.name == "posix" else "C:\\"
-                file_path = inquirer.filepath(
-                    message="Enter the excel file path:",
-                    default=home_path,
-                    validate=lambda result: PathValidator(is_file=True, message="Input is not a file") and result[-5:] in ['.xlsx', 'xlsm', 'xltx', 'xltm'],
-                    invalid_message="Input is not a file or with wrong extension. Please select an excel (.xlsx) file."
-                ).execute()
-                bulk_execution(file=file_path, resource_type=resource_type)
+                proceed = inquirer.confirm(message="Do you want to proceed again?", default=True).execute()
+                time.sleep(1)
 
             else:
                 proceed = False
-                continue
 
-            proceed = inquirer.confirm(message="Do you want to proceed again?", default=True).execute()
+        except KeyboardInterrupt:
+            print("Exiting")
             time.sleep(1)
-
-        else:
             proceed = False
 
 

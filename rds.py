@@ -181,7 +181,7 @@ class EncryptRDS:
             ApplyImmediately=True
         )
 
-        # Time to change to renaming
+        # Time to change to renaming status
         time.sleep(30)
 
         self._rds_available_waiter.wait(

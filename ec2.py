@@ -74,7 +74,6 @@ class EncryptEC2:
 
     def get_az(self) -> str:
         """ Returns availability zone of the instance """
-        # return self._instance_details['Placement']['AvailabilityZone']
         return self._ec2_details['Reservations'][0]['Instances'][0]['Placement']['AvailabilityZone']
 
     def stop_instance(self) -> None:
@@ -175,9 +174,8 @@ class EncryptEC2:
                 if tag['Key'] == 'volume-type':
                     volume_type = tag['Value']
 
-            # Due to SCP restrictions, we can't create gp2 or io1 or standard type EBS volumes, thus converting
-            if volume_type == 'gp2' or volume_type == 'io1' or volume_type == 'standard':
-                volume_type = 'gp3'
+            # if volume_type == 'gp2' or volume_type == 'io1' or volume_type == 'standard':
+            #     volume_type = 'gp3'
 
             response = self._ec2_client.create_volume(
                 AvailabilityZone=availability_zone,
