@@ -165,7 +165,7 @@ class EncryptRDS:
         )
 
         # Time to change to renaming
-        time.sleep(30)
+        time.sleep(15)
 
         self._rds_available_waiter.wait(
             DBInstanceIdentifier=self.rds_identifier,
@@ -182,7 +182,7 @@ class EncryptRDS:
         )
 
         # Time to change to renaming status
-        time.sleep(30)
+        time.sleep(15)
 
         self._rds_available_waiter.wait(
             DBInstanceIdentifier=f"{self.rds_identifier}-encrypted",

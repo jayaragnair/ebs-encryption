@@ -152,7 +152,7 @@ def main():
                     choices=[
                         "Single",
                         "Bulk",
-                        Choice(value=None, name="Exit"),
+                        "Exit"
                     ],
                     default=1
                 ).execute()
@@ -163,10 +163,13 @@ def main():
                         message=f"Enter the {resource_text}:",
                         validate=EmptyInputValidator("Input should not be empty")
                     ).execute()
+
                     region = inquirer.text(
                         message="Enter the AWS region code:",
                         completer=aws_region_completer(resource_type),
-                        validate=EmptyInputValidator("Input should not be empty"),
+                        # validate=EmptyInputValidator("Input should not be empty"),
+                        validate=lambda result: result in aws_region_completer(resource_type).keys(),
+                        invalid_message="Select a valid AWS region.",
                         multicolumn_complete=True,
                     ).execute()
 
@@ -179,6 +182,8 @@ def main():
                     ).execute()
 
                     key = inquirer.text(message="Enter the custom KMS key (Leave blank to use AWS managed key):").execute()
+
+                    print("\n=====================================================")
                     if key:
                         single_execution(resource_type=resource_type, resource_id=resource_id, region=region, profile=profile,
                                          key=key)
@@ -193,9 +198,10 @@ def main():
                         validate=lambda result: PathValidator(is_file=True, message="Input is not a file") and result[-5:] in ['.xlsx', 'xlsm', 'xltx', 'xltm'],
                         invalid_message="Input is not a file or with wrong extension. Please select an excel (.xlsx) file."
                     ).execute()
+                    print("\n=====================================================")
                     bulk_execution(file=file_path, resource_type=resource_type)
 
-                else:
+                elif count == "Exit":
                     proceed = False
                     continue
 

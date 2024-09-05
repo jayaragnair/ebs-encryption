@@ -1,6 +1,5 @@
 import boto3
 from botocore.exceptions import ClientError
-# from sys import exit
 
 
 class EncryptEC2:
@@ -58,7 +57,7 @@ class EncryptEC2:
                 return False
 
             # Checks if the instance type supports EBS encryption
-            instance_type = self._ec2_details['Reservations'][0]['InstanceType']
+            instance_type = self._ec2_client.describe_instances(InstanceIds=[self.instance_id])['Reservations'][0]['Instances'][0]['InstanceType']
             if instance_type.startswith(('c1', 'm1', 'm2', 't1')):
                 print(f"Instance type {instance_type} is not supported for encryption")
                 return False
@@ -108,7 +107,7 @@ class EncryptEC2:
                 Tags=[
                     {
                         'Key': 'device-name',
-                        'Value': item['DeviceName']
+                        'Value': item['Attachments'][0]['Device']
                     },
                     {
                         'Key': 'volume-type',
@@ -116,7 +115,7 @@ class EncryptEC2:
                     }
                 ]
             )
-            print(f"-- Detaching {volume_id} : {item['DeviceName']}")
+            print(f"-- Detaching {volume_id} : {item['Attachments'][0]['Device']}")
             self._ec2_client.detach_volume(
                 InstanceId=self.instance_id,
                 VolumeId=volume_id
@@ -241,10 +240,10 @@ class EncryptEC2:
 
     def start_encryption(self):
         if self._pre_checks_passed:
+            volume_ids = [ebs['VolumeId'] for ebs in self.get_ebs_list()]
             availability_zone = self.get_az()
             self.stop_instance()
             self.detach_volume()
-            volume_ids = [ebs['VolumeId'] for ebs in self.get_ebs_list()]
             snapshots = self.create_snapshots(volume_ids=volume_ids)
             encrypted_volumes = self.create_volume(snapshot_ids=snapshots, availability_zone=availability_zone)
             self.attach_volume(volume_ids=encrypted_volumes)
