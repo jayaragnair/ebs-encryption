@@ -92,7 +92,7 @@ class EncryptEC2:
                 'MaxAttempts': self._max_attempts
             }
         )
-        print(f"{self.instance_id} stopped")
+        print(f"-- {self.instance_id} stopped")
 
     def detach_volume(self):
         """ Detach the EBS volumes attached to EC2, if they are unencrypted"""
